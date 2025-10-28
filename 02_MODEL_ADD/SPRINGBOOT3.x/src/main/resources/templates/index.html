@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${apiTitle}">소득 예측 API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: darkcyan;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #888;
+            font-weight: 300;
+        }
+
+        .version-badge {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 6px 16px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 50px;
+        }
+
+        .feature-card {
+            background: #141414;
+            border: 1px solid #1f1f1f;
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: #333;
+            transform: translateY(-2px);
+        }
+
+        .feature-card h4 {
+            color: #fff;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .feature-card ul {
+            list-style: none;
+        }
+
+        .feature-card li {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin: 6px 0;
+            padding-left: 8px;
+        }
+
+        .feature-card strong {
+            color: #fff;
+        }
+
+        .prediction-form {
+            background: #141414;
+            border: 1px solid #1f1f1f;
+            border-radius: 16px;
+            padding: 40px;
+            margin: 40px 0;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            background: #0a0a0a;
+            border: 1px solid #1f1f1f;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: darkcyan;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .predict-btn {
+            background: darkcyan;
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .predict-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .predict-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .spinner {
+            border: 3px solid #1f1f1f;
+            border-top: 3px solid darkcyan;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            background: #141414;
+            border: 1px solid #1f1f1f;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-section h3 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #1f1f1f;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 500;
+            color: #aaa;
+        }
+
+        .result-value {
+            color: #fff;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .prediction-high {
+            color: #4ade80;
+        }
+
+        .prediction-low {
+            color: #f87171;
+        }
+
+        .api-info-section {
+            background: #141414;
+            border: 1px solid #1f1f1f;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .api-info-section p {
+            color: #aaa;
+            margin-bottom: 15px;
+        }
+
+        .api-info-section ul {
+            list-style: none;
+        }
+
+        .api-info-section li {
+            color: #ccc;
+            margin: 8px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .api-info-section li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: darkcyan;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .prediction-form {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1 th:text="${apiTitle}">소득 예측 API</h1>
+        <p th:text="${apiDescription}">개인 정보를 기반으로 연간 소득을 예측하는 API</p>
+        <div class="version-badge" th:text="'버전 ' + ${apiVersion}">버전 1.0.0</div>
+    </div>
+
+    <div class="content">
+        <!-- 입력 데이터 필드 -->
+        <div class="section">
+            <h2>입력 데이터 필드</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>기본 정보</h4>
+                    <ul>
+                        <li><strong>age</strong>: 나이 (17-90)</li>
+                        <li><strong>workclass</strong>: 근무 형태 (0-7)</li>
+                        <li><strong>fnlwgt</strong>: 인구 가중치</li>
+                        <li><strong>hours_per_week</strong>: 주당 근무 시간 (1-100)</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>교육 정보</h4>
+                    <ul>
+                        <li><strong>education</strong>: 최종 학력 (0-15)</li>
+                        <li><strong>education_num</strong>: 교육 연수 (1-16)</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>개인 정보</h4>
+                    <ul>
+                        <li><strong>marital_status</strong>: 결혼 상태 (0-6)</li>
+                        <li><strong>occupation</strong>: 직업 (0-14)</li>
+                        <li><strong>relationship</strong>: 가족 관계 (0-5)</li>
+                        <li><strong>race</strong>: 인종 (0-4)</li>
+                        <li><strong>sex</strong>: 성별 (0: 여성, 1: 남성)</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>재정 정보</h4>
+                    <ul>
+                        <li><strong>capital_gain</strong>: 자본 이득</li>
+                        <li><strong>capital_loss</strong>: 자본 손실</li>
+                        <li><strong>native_country</strong>: 출신 국가 (0-40)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 예측 입력 폼 -->
+        <div class="section">
+            <h2>소득 예측하기</h2>
+            <div class="prediction-form">
+                <form id="predictionForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="age">나이 (age):</label>
+                            <input type="number" id="age" name="age" min="17" max="90" value="38" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="workclass">근무 형태 (workclass):</label>
+                            <select id="workclass" name="workclass" required>
+                                <option value="0" selected>Private (0)</option>
+                                <option value="1">Self-emp-not-inc (1)</option>
+                                <option value="2">Self-emp-inc (2)</option>
+                                <option value="3">Federal-gov (3)</option>
+                                <option value="4">Local-gov (4)</option>
+                                <option value="5">State-gov (5)</option>
+                                <option value="6">Without-pay (6)</option>
+                                <option value="7">Never-worked (7)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="fnlwgt">인구 가중치 (fnlwgt):</label>
+                            <input type="number" id="fnlwgt" name="fnlwgt" min="0" value="200000" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="education">최종 학력 (education):</label>
+                            <select id="education" name="education" required>
+                                <option value="0">Preschool (0)</option>
+                                <option value="1">1st-4th (1)</option>
+                                <option value="2">5th-6th (2)</option>
+                                <option value="3">7th-8th (3)</option>
+                                <option value="4">9th (4)</option>
+                                <option value="5">10th (5)</option>
+                                <option value="6">11th (6)</option>
+                                <option value="7">12th (7)</option>
+                                <option value="8">HS-grad (8)</option>
+                                <option value="9">Prof-school (9)</option>
+                                <option value="10">Assoc-acdm (10)</option>
+                                <option value="11">Assoc-voc (11)</option>
+                                <option value="12" selected>Some-college (12)</option>
+                                <option value="13">Bachelors (13)</option>
+                                <option value="14">Masters (14)</option>
+                                <option value="15">Doctorate (15)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="educationNum">교육 연수 (education_num):</label>
+                            <input type="number" id="educationNum" name="educationNum" min="1" max="16" value="10" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="maritalStatus">결혼 상태 (marital_status):</label>
+                            <select id="maritalStatus" name="maritalStatus" required>
+                                <option value="0" selected>Never-married (0)</option>
+                                <option value="1">Married-civ-spouse (1)</option>
+                                <option value="2">Divorced (2)</option>
+                                <option value="3">Married-spouse-absent (3)</option>
+                                <option value="4">Separated (4)</option>
+                                <option value="5">Married-AF-spouse (5)</option>
+                                <option value="6">Widowed (6)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="occupation">직업 (occupation):</label>
+                            <select id="occupation" name="occupation" required>
+                                <option value="0">Tech-support (0)</option>
+                                <option value="1">Craft-repair (1)</option>
+                                <option value="2">Other-service (2)</option>
+                                <option value="3">Sales (3)</option>
+                                <option value="4" selected>Exec-managerial (4)</option>
+                                <option value="5">Prof-specialty (5)</option>
+                                <option value="6">Handlers-cleaners (6)</option>
+                                <option value="7">Machine-op-inspct (7)</option>
+                                <option value="8">Adm-clerical (8)</option>
+                                <option value="9">Farming-fishing (9)</option>
+                                <option value="10">Transport-moving (10)</option>
+                                <option value="11">Priv-house-serv (11)</option>
+                                <option value="12">Protective-serv (12)</option>
+                                <option value="13">Armed-Forces (13)</option>
+                                <option value="14">Unknown (14)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="relationship">가족 관계 (relationship):</label>
+                            <select id="relationship" name="relationship" required>
+                                <option value="0">Wife (0)</option>
+                                <option value="1">Own-child (1)</option>
+                                <option value="2" selected>Husband (2)</option>
+                                <option value="3">Not-in-family (3)</option>
+                                <option value="4">Other-relative (4)</option>
+                                <option value="5">Unmarried (5)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="race">인종 (race):</label>
+                            <select id="race" name="race" required>
+                                <option value="0" selected>White (0)</option>
+                                <option value="1">Amer-Indian-Eskimo (1)</option>
+                                <option value="2">Asian-Pac-Islander (2)</option>
+                                <option value="3">Black (3)</option>
+                                <option value="4">Other (4)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sex">성별 (sex):</label>
+                            <select id="sex" name="sex" required>
+                                <option value="0">여성 (0)</option>
+                                <option value="1" selected>남성 (1)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="capitalGain">자본 이득 (capital_gain):</label>
+                            <input type="number" id="capitalGain" name="capitalGain" min="0" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="capitalLoss">자본 손실 (capital_loss):</label>
+                            <input type="number" id="capitalLoss" name="capitalLoss" min="0" value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="hoursPerWeek">주당 근무 시간 (hours_per_week):</label>
+                            <input type="number" id="hoursPerWeek" name="hoursPerWeek" min="1" max="100" step="0.1" value="40" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="nativeCountry">출신 국가 (native_country):</label>
+                            <select id="nativeCountry" name="nativeCountry" required>
+                                <option value="0" selected>United-States (0)</option>
+                                <option value="1">Cambodia (1)</option>
+                                <option value="2">England (2)</option>
+                                <option value="3">Puerto-Rico (3)</option>
+                                <option value="4">Canada (4)</option>
+                                <option value="5">Germany (5)</option>
+                                <option value="6">Outlying-US(Guam-USVI-etc) (6)</option>
+                                <option value="7">India (7)</option>
+                                <option value="8">Japan (8)</option>
+                                <option value="9">Greece (9)</option>
+                                <option value="10">South (10)</option>
+                                <option value="11">China (11)</option>
+                                <option value="12">Cuba (12)</option>
+                                <option value="13">Iran (13)</option>
+                                <option value="14">Honduras (14)</option>
+                                <option value="15">Philippines (15)</option>
+                                <option value="16">Italy (16)</option>
+                                <option value="17">Poland (17)</option>
+                                <option value="18">Jamaica (18)</option>
+                                <option value="19">Vietnam (19)</option>
+                                <option value="20">Mexico (20)</option>
+                                <option value="21">Portugal (21)</option>
+                                <option value="22">Ireland (22)</option>
+                                <option value="23">France (23)</option>
+                                <option value="24">Dominican-Republic (24)</option>
+                                <option value="25">Laos (25)</option>
+                                <option value="26">Ecuador (26)</option>
+                                <option value="27">Taiwan (27)</option>
+                                <option value="28">Haiti (28)</option>
+                                <option value="29">Columbia (29)</option>
+                                <option value="30">Hungary (30)</option>
+                                <option value="31">Guatemala (31)</option>
+                                <option value="32">Nicaragua (32)</option>
+                                <option value="33">Scotland (33)</option>
+                                <option value="34">Thailand (34)</option>
+                                <option value="35">Yugoslavia (35)</option>
+                                <option value="36">El-Salvador (36)</option>
+                                <option value="37">Trinadad&Tobago (37)</option>
+                                <option value="38">Peru (38)</option>
+                                <option value="39">Hong (39)</option>
+                                <option value="40">Holand-Netherlands (40)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="predict-btn" id="predictBtn">예측 실행</button>
+                </form>
+            </div>
+
+            <!-- 로딩 표시 -->
+            <div id="loadingSection" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>분석 중...</p>
+            </div>
+
+            <!-- 결과 표시 -->
+            <div id="resultSection" class="result-section">
+                <h3>예측 결과</h3>
+                <div id="resultContent"></div>
+            </div>
+        </div>
+
+        <!-- API 응답 형태 -->
+        <div class="section">
+            <div class="api-info-section">
+                <h2 style="margin-bottom: 20px;">API 응답 형태</h2>
+                <p>API는 다음과 같은 형태로 예측 결과를 반환합니다:</p>
+                <ul>
+                    <li><strong>prediction</strong>: 예측된 소득 구간 ("<=50K" 또는 ">50K")</li>
+                    <li><strong>probability_low</strong>: <=50K 확률</li>
+                    <li><strong>probability_high</strong>: >50K 확률</li>
+                    <li><strong>confidence</strong>: 예측 신뢰도 (최대 확률값)</li>
+                    <li><strong>interpretation</strong>: 결과 해석</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = {};
+
+        // FormData를 객체로 변환
+        for (let [key, value] of formData.entries()) {
+            if (key === 'hoursPerWeek') {
+                data[key] = parseFloat(value);
+            } else {
+                data[key] = parseInt(value);
+            }
+        }
+
+        // UI 상태 변경
+        const predictBtn = document.getElementById('predictBtn');
+        const loadingSection = document.getElementById('loadingSection');
+        const resultSection = document.getElementById('resultSection');
+
+        predictBtn.disabled = true;
+        predictBtn.textContent = '분석 중...';
+        loadingSection.style.display = 'block';
+        resultSection.classList.remove('show');
+
+        try {
+            // Spring Boot Controller로 POST 요청
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // 결과 표시
+            displayResult(result);
+
+        } catch (error) {
+            console.error('예측 요청 실패:', error);
+            displayError('예측 요청 중 오류가 발생했습니다: ' + error.message);
+        } finally {
+            // UI 상태 복원
+            predictBtn.disabled = false;
+            predictBtn.textContent = '예측 실행';
+            loadingSection.style.display = 'none';
+        }
+    });
+
+    function displayResult(result) {
+        const resultContent = document.getElementById('resultContent');
+        const resultSection = document.getElementById('resultSection');
+
+        let html = '';
+
+        if (result.error) {
+            html = `<div style="color: #f87171; padding: 20px; background: #1a0f0f; border: 1px solid #3a1f1f; border-radius: 8px; margin: 10px 0;">
+                <strong>오류:</strong> ${result.error}
+            </div>`;
+        } else {
+            // 예측 결과가 높은 소득인지 확인
+            const isHighIncome = result.prediction === '>50K';
+            const predictionClass = isHighIncome ? 'prediction-high' : 'prediction-low';
+            const probabilityClass = result.probability_high > 0.5 ? 'prediction-high' : 'prediction-low';
+
+            html = `
+                <div class="result-item">
+                    <span class="result-label">예측 결과:</span>
+                    <span class="result-value ${predictionClass}">${result.prediction}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">50K 이하 확률:</span>
+                    <span class="result-value">${(result.probability_low * 100).toFixed(1)}%</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">50K 초과 확률:</span>
+                    <span class="result-value ${probabilityClass}">${(result.probability_high * 100).toFixed(1)}%</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">예측 신뢰도:</span>
+                    <span class="result-value">${(result.confidence * 100).toFixed(1)}%</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">해석:</span>
+                    <span class="result-value">${result.interpretation}</span>
+                </div>
+            `;
+        }
+
+        resultContent.innerHTML = html;
+        resultSection.classList.add('show');
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function displayError(message) {
+        const resultContent = document.getElementById('resultContent');
+        const resultSection = document.getElementById('resultSection');
+
+        resultContent.innerHTML = `<div style="color: #f87171; padding: 20px; background: #1a0f0f; border: 1px solid #3a1f1f; border-radius: 8px; margin: 10px 0;">
+            <strong>오류:</strong> ${message}
+        </div>`;
+
+        resultSection.classList.add('show');
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+</script>
+</body>
+</html>

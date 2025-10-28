@@ -73,3 +73,37 @@ def create_item(payload: ItemIn):
     # print("payload",payload)
     return item
 
+
+# Endpoint: POST /upload
+# 설명: form-data로 파일 업로드
+# 테스트: key=file, value=<binary>
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    content = await file.read()
+    return {"filename": file.filename, "size": len(content), "content_type": file.content_type}
+
+def send_email(to: str):
+    with open("notifications.log", "a", encoding="utf-8") as f:
+        f.write(f"sent to: {to}\n")
+
+@app.get("/notify")
+def notify(bg: BackgroundTasks, email: str = Query(...)):
+    bg.add_task(send_email, email)
+    return {"queued": True, "to": email}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
