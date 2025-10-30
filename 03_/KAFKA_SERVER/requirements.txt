@@ -1,0 +1,6 @@
+# Kafka Python 클라이언트 (테스트용)
+kafka-python==2.0.2
+
+# 추가 유틸리티
+requests==2.31.0
+

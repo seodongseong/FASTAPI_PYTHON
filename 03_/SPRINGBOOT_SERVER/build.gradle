@@ -1,0 +1,57 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.6'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+description = 'Demo project for Spring Boot'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+    // 웹 개발 기본 dependencies
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Reactive Web (HTTP 클라이언트용 - ML FASTAPI 통신)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // 카프카 관련 dependencies
+    implementation 'org.springframework.kafka:spring-kafka'
+    // 설정 처리
+    implementation 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // JSON 처리 (이미 spring-boot-starter-web에 포함되지만 명시적으로 추가)
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // 개발 도구
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // 테스트
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

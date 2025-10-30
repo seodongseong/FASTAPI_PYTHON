@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상품 목록</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 2.5rem;
+        }
+
+        .recommend-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .recommend-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .item-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .item-image {
+            width: 100%;
+            height: 250px;
+            background: linear-gradient(135deg, darkcyan 0%, #006666 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .item-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="10" cy="60" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .item-content {
+            padding: 20px;
+        }
+
+        .item-category {
+            background: rgba(0, 139, 139, 0.1);
+            color: darkcyan;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .item-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .item-price {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #e53935;
+            margin-bottom: 10px;
+        }
+
+        .item-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 15px;
+        }
+
+        .item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-brand {
+            font-size: 0.8rem;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .item-rating {
+            background: #ffc107;
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .stats {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .filter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-title i {
+            margin-right: 8px;
+            color: darkcyan;
+        }
+
+        .category-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .category-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            color: #495057;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .category-btn:hover {
+            background: darkcyan;
+            color: white;
+            border-color: darkcyan;
+            transform: translateY(-2px);
+        }
+
+        .category-btn.active {
+            background: darkcyan;
+            color: white;
+            border-color: darkcyan;
+        }
+
+        .filter-reset {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: auto;
+        }
+
+        .filter-reset:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .filter-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 139, 139, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+
+        @media (max-width: 768px) {
+            .item-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .item-image {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <button class="recommend-btn" onclick="location.href='/item/recommend'">
+        클릭 패턴 확인
+    </button>
+    
+    <div class="container">
+        <h1>상품 목록</h1>
+        
+        <div class="stats">
+            <h2>총 상품 수: <span th:text="${#lists.size(items)}">0</span>개</h2>
+            <p>다양한 카테고리의 상품들을 확인해보세요!</p>
+        </div>
+
+        <!-- 카테고리 필터 섹션 -->
+        <div class="filter-section">
+            <div class="filter-title">
+                <i class="fas fa-filter"></i>
+                카테고리 필터
+            </div>
+            <div class="category-filters">
+                <button class="category-btn active" onclick="filterByCategory('all')">
+                    전체
+                </button>
+                <button class="category-btn" onclick="filterByCategory('가전')">
+                    가전
+                </button>
+                <button class="category-btn" onclick="filterByCategory('전자제품')">
+                    전자제품
+                </button>
+                <button class="category-btn" onclick="filterByCategory('패션')">
+                    패션
+                </button>
+                <button class="category-btn" onclick="filterByCategory('스포츠')">
+                    스포츠
+                </button>
+                <button class="category-btn" onclick="filterByCategory('도서')">
+                    도서
+                </button>
+                <button class="filter-reset" onclick="resetFilters()">
+                    초기화
+                </button>
+            </div>
+            <div class="filter-info" id="filterInfo">
+                전체 상품을 표시하고 있습니다.
+            </div>
+        </div>
+
+        <div class="item-grid">
+            <div th:each="item : ${items}" class="item-card" 
+                 th:data-product-id="${item.id}" 
+                 th:data-category="${item.category}"
+                 th:onclick="'handleItemClick(' + ${item.id} + ')'">
+                <div class="item-image">
+                    <span th:text="${item.productName}">상품명</span>
+                </div>
+                <div class="item-content">
+                    <div class="item-category" th:text="${item.category}">카테고리</div>
+                    <div class="item-name" th:text="${item.productName}">상품명</div>
+                    <div class="item-price" th:text="'₩' + ${#numbers.formatInteger(item.price, 0, 'COMMA')}">가격</div>
+                    <div class="item-description" th:text="${item.description}">상품 설명</div>
+                    <div class="item-footer">
+                        <div class="item-brand" th:text="${item.brand}">브랜드</div>
+                        <div class="item-rating" th:text="${item.rating}">평점</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        //----------------------------------------
+        // 전역 변수
+        //----------------------------------------
+        let currentFilter = 'all';
+        let allItems = [];
+
+        //----------------------------------------
+        // 상품 클릭 처리 함수
+        //----------------------------------------
+        function handleItemClick(productId) {
+            console.log('상품 클릭됨 - ID:', productId);
+            
+            // 먼저 Kafka 이벤트 전송
+            sendClickEvent(productId);
+            
+            // 그 다음 상세 페이지로 이동 (약간의 지연 후)
+            setTimeout(() => {
+                window.location.href = '/item/details?id=' + productId;
+            }, 100);
+        }
+
+        //----------------------------------------
+        // Kafka 이벤트 전송 함수
+        //----------------------------------------
+        function sendClickEvent(productId) {
+            fetch('/item/click?id=' + productId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('클릭 이벤트가 Kafka로 전송되었습니다. ID:', productId);
+                } else {
+                    console.error('클릭 이벤트 전송 실패:', response.statusText);
+                }
+            })
+            .catch(error => {
+                console.error('클릭 이벤트 전송 중 오류:', error);
+            });
+        }
+
+        //----------------------------------------
+        // 카테고리 필터링 함수
+        //----------------------------------------
+        function filterByCategory(category) {
+            currentFilter = category;
+            
+            // 모든 버튼에서 active 클래스 제거
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 클릭된 버튼에 active 클래스 추가
+            event.target.classList.add('active');
+            
+            // 상품 필터링
+            const itemCards = document.querySelectorAll('.item-card');
+            let visibleCount = 0;
+            
+            itemCards.forEach(card => {
+                const cardCategory = card.getAttribute('data-category');
+                
+                if (category === 'all' || cardCategory === category) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // 필터 정보 업데이트
+            updateFilterInfo(category, visibleCount);
+            
+            console.log(`카테고리 필터 적용: ${category}, 표시된 상품: ${visibleCount}개`);
+        }
+
+        //----------------------------------------
+        // 필터 초기화 함수
+        //----------------------------------------
+        function resetFilters() {
+            filterByCategory('all');
+            
+            // 전체 버튼에 active 클래스 추가
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.trim() === '전체') {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        //----------------------------------------
+        // 필터 정보 업데이트 함수
+        //----------------------------------------
+        function updateFilterInfo(category, count) {
+            const filterInfo = document.getElementById('filterInfo');
+            
+            if (category === 'all') {
+                filterInfo.textContent = `전체 상품을 표시하고 있습니다. (총 ${count}개)`;
+            } else {
+                filterInfo.textContent = `"${category}" 카테고리 상품을 표시하고 있습니다. (${count}개)`;
+            }
+        }
+
+        //----------------------------------------
+        // 페이지 로드 시 초기화
+        //----------------------------------------
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('상품 목록 페이지 로드 완료');
+            
+            // 모든 상품 카드 수집
+            allItems = document.querySelectorAll('.item-card');
+            
+            // 초기 필터 정보 설정
+            updateFilterInfo('all', allItems.length);
+        });
+    </script>
+</body>
+</html>

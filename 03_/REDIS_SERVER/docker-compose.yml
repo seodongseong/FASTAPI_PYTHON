@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  redis-server:
+    image: redis:7-alpine
+    container_name: redis-server
+    restart: unless-stopped
+    ports:
+      - "6379:6379"  # Redis 기본 포트
+    volumes:
+      - redis_data:/data  # 데이터 영구 저장
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    restart: unless-stopped
+    ports:
+      - "6380:8081"  # Redis Commander 웹 인터페이스
+    environment:
+      - REDIS_HOSTS=local:redis-server:6379
+    depends_on:
+      - redis-server
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+    external: true
+    name: 03_kafka_app-network
+

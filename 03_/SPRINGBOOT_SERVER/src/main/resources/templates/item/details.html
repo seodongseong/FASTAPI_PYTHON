@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상품 상세정보</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 20px;
+            background: darkcyan;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            transition: background 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: #006666;
+        }
+
+        .product-detail {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .product-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, darkcyan 0%, #006666 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="10" cy="60" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .product-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-category {
+            background: rgba(0, 139, 139, 0.1);
+            color: darkcyan;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 15px;
+            width: fit-content;
+        }
+
+        .product-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+
+        .product-price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #e53935;
+            margin-bottom: 20px;
+        }
+
+        .product-description {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .product-details {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .detail-value {
+            color: #212529;
+        }
+
+        .product-rating {
+            background: #ffc107;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: darkcyan;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #006666;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .product-layout {
+                grid-template-columns: 1fr;
+                gap: 30px;
+                padding: 20px;
+            }
+            
+            .product-image {
+                height: 300px;
+            }
+            
+            .product-name {
+                font-size: 1.5rem;
+            }
+            
+            .product-price {
+                font-size: 2rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/item/list" class="back-button">← 목록으로 돌아가기</a>
+        
+        <div class="product-detail">
+            <!-- 에러 메시지 -->
+            <div th:if="${error}" class="error-message" th:text="${error}">
+                상품을 찾을 수 없습니다.
+            </div>
+            
+            <!-- 상품 상세 정보 -->
+            <div th:if="${item}" class="product-layout">
+                <div class="product-image">
+                    <span th:text="${item.productName}">상품명</span>
+                </div>
+                
+                <div class="product-info">
+                    <div class="product-category" th:text="${item.category}">카테고리</div>
+                    <div class="product-name" th:text="${item.productName}">상품명</div>
+                    <div class="product-price" th:text="'₩' + ${#numbers.formatInteger(item.price, 0, 'COMMA')}">가격</div>
+                    <div class="product-description" th:text="${item.description}">상품 설명</div>
+                    <div class="product-rating" th:text="'평점: ' + ${item.rating}">평점</div>
+                    
+                    <div class="product-details">
+                        <div class="detail-row">
+                            <span class="detail-label">상품 ID</span>
+                            <span class="detail-value" th:text="${item.id}">ID</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">카테고리</span>
+                            <span class="detail-value" th:text="${item.category}">카테고리</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">브랜드</span>
+                            <span class="detail-value" th:text="${item.brand}">브랜드</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">가격</span>
+                            <span class="detail-value" th:text="'₩' + ${#numbers.formatInteger(item.price, 0, 'COMMA')}">가격</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">평점</span>
+                            <span class="detail-value" th:text="${item.rating}">평점</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">이미지 경로</span>
+                            <span class="detail-value" th:text="${item.image}">이미지 경로</span>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="addToCart()">장바구니 담기</button>
+                        <button class="btn btn-secondary" onclick="goBack()">뒤로 가기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 장바구니 담기 기능 (카프카 이벤트 전송)
+        function addToCart() {
+            console.log('장바구니 담기 클릭 - 카프카 이벤트 전송 예정');
+            alert('장바구니에 담았습니다!');
+            // 여기에 카프카 이벤트 전송 코드 추가
+        }
+        
+        // 뒤로 가기
+        function goBack() {
+            history.back();
+        }
+        
+        // 페이지 로드 시 상품 ID 로그
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+            if (productId) {
+                console.log('상품 상세 페이지 로드 - ID:', productId);
+                // 여기에 카프카로 상품 조회 이벤트 전송 코드 추가
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상품 추천 시스템</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .recommendation-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .recommendation-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .confidence-badge {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .lift-badge {
+            background: linear-gradient(45deg, #4ecdc4, #6dd5ed);
+            color: white;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .support-badge {
+            background: linear-gradient(45deg, #45b7d1, #96c7ed);
+            color: white;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .product-card {
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .product-card:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.2);
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .section-title {
+            color: #2c3e50;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- 헤더 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="text-center">
+                    <h1 class="display-4 text-primary mb-3">
+                        <i class="fas fa-magic"></i> 이벤트 패턴 분석 페이지
+                    </h1>
+                    <p class="lead text-muted">연관규칙 분석을 통한 개인화된 상품 추천</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 정보 섹션 -->
+        <div class="row mb-4" th:if="${analyticsData != null and !analyticsData.containsKey('error')}">
+            <div class="col-12">
+                <div class="card bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="fas fa-chart-bar"></i> 실시간 통계 정보
+                        </h5>
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <h4 th:text="${analyticsData.total_products != null ? analyticsData.total_products : '-'}">-</h4>
+                                <p class="mb-0">총 상품 수</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h4 th:text="${analyticsData.total_clicks != null ? analyticsData.total_clicks : '-'}">-</h4>
+                                <p class="mb-0">총 클릭 수</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h4 th:text="${analyticsData.category_distribution != null ? #maps.size(analyticsData.category_distribution) : '-'}">-</h4>
+                                <p class="mb-0">카테고리 수</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h4 th:if="${analyticsData.price_statistics != null and !analyticsData.price_statistics.isEmpty() and analyticsData.price_statistics.containsKey('average')}" 
+                                    th:text="'₩' + ${#numbers.formatInteger(analyticsData.price_statistics['average'], 0, 'COMMA')}">-</h4>
+                                <h4 th:unless="${analyticsData.price_statistics != null and !analyticsData.price_statistics.isEmpty() and analyticsData.price_statistics.containsKey('average')}">-</h4>
+                                <p class="mb-0">평균 가격</p>
+                            </div>
+                        </div>
+                        <div class="mt-3" th:if="${analyticsData.top_products != null and !analyticsData.top_products.isEmpty()}">
+                            <small>
+                                <strong>인기 상품:</strong> 
+                                <span th:each="product, iterStat : ${analyticsData.top_products}" 
+                                      th:if="${iterStat.index < 3}"
+                                      th:text="${product.product_name} + (${iterStat.index < 2} ? ', ' : '')">상품명</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 정보 오류 표시 -->
+        <div class="row mb-4" th:if="${analyticsData != null and analyticsData.containsKey('error')}">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>통계 정보 로드 실패:</strong> 
+                    <span th:text="${analyticsData.error}">오류 메시지</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상품 선택 및 추천 섹션 -->
+        <div class="row mb-4">
+            <div class="col-md-8 mx-auto">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-magic"></i> AI 상품 패턴 분석</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">시간 간격 (초):</label>
+                                <input type="range" class="form-range" id="timeWindow" min="1" max="30" step="1" value="5">
+                                <div class="text-center">
+                                    <span id="timeWindowValue">5</span>초
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">최소 지지도:</label>
+                                <input type="range" class="form-range" id="minSupport" min="0.05" max="0.5" step="0.05" value="0.1">
+                                <div class="text-center">
+                                    <span id="supportValue">0.1</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">최소 신뢰도:</label>
+                                <input type="range" class="form-range" id="minConfidence" min="0.1" max="1.0" step="0.1" value="0.3">
+                                <div class="text-center">
+                                    <span id="confidenceValue">0.3</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">최대 패턴 수:</label>
+                                <input type="number" class="form-control" id="maxRecommendations" min="1" max="10" value="5">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">상품 선택:</label>
+                                <select class="form-select" id="productSelect">
+                                    <option value="">상품을 선택하세요</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">패턴 방식:</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="recommendMode" id="autoMode" value="auto" checked>
+                                    <label class="btn btn-outline-primary" for="autoMode">자동 패턴</label>
+                                    
+                                    <input type="radio" class="btn-check" name="recommendMode" id="manualMode" value="manual">
+                                    <label class="btn btn-outline-primary" for="manualMode">상품 선택</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="getRecommendations()">
+                            <i class="fas fa-sync-alt"></i> 패턴 결과 확인
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로딩 스피너 -->
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">로딩 중...</span>
+                    </div>
+                    <p class="mt-2">AI가 패턴을 분석하고 있습니다...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 패턴 결과 섹션 -->
+        <div class="row mb-4" id="recommendationResults" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-star"></i> 패턴 결과</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="recommendationCards">
+                            <!-- 패턴 상품 카드들이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 패턴 근거 정보 섹션 -->
+        <div class="row mb-4" id="recommendationBasis" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-lightbulb"></i> 패턴 근거 정보</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="basisContent">
+                            <!-- 패턴 근거 정보가 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 그룹 정보 섹션 -->
+        <div class="row mb-4" id="groupsInfo" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-layer-group"></i> 현재 그룹 정보</h5>
+                        <button class="btn btn-light btn-sm" onclick="loadGroupsInfo()">
+                            <i class="fas fa-sync-alt"></i> 새로고침
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="groupsContent">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-info-circle"></i> 그룹 정보를 로드하려면 위의 버튼을 클릭하세요
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 슬라이더 값 업데이트
+        document.getElementById('minConfidence').addEventListener('input', function() {
+            document.getElementById('confidenceValue').textContent = this.value;
+        });
+        
+        document.getElementById('minSupport').addEventListener('input', function() {
+            document.getElementById('supportValue').textContent = this.value;
+        });
+
+        document.getElementById('timeWindow').addEventListener('input', function() {
+            document.getElementById('timeWindowValue').textContent = this.value;
+        });
+
+        // 로딩 표시/숨김
+        function showLoading() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const recommendationResults = document.getElementById('recommendationResults');
+            
+            if (loadingSpinner) {
+                loadingSpinner.style.display = 'block';
+            }
+            if (recommendationResults) {
+                recommendationResults.style.display = 'none';
+            }
+        }
+
+        function hideLoading() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            if (loadingSpinner) {
+                loadingSpinner.style.display = 'none';
+            }
+        }
+
+        // 통합 패턴 함수
+        async function getRecommendations() {
+            const recommendMode = document.querySelector('input[name="recommendMode"]:checked').value;
+            
+            if (recommendMode === 'auto') {
+                await getAutoRecommendations();
+            } else {
+                await getProductRecommendations();
+            }
+        }
+
+        // 상품 기반 패턴 분석
+        async function getProductRecommendations() {
+            const productName = document.getElementById('productSelect').value;
+            if (!productName) {
+                alert('상품을 선택해주세요.');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const timeWindow = document.getElementById('timeWindow').value;
+                const minConfidence = document.getElementById('minConfidence').value;
+                const maxRecommendations = document.getElementById('maxRecommendations').value;
+                
+                // 패턴 근거를 위해 분석 데이터도 함께 가져옴
+                const analyticsResponse = await fetch('/item/analytics');
+                const analyticsData = await analyticsResponse.json();
+                
+                const response = await fetch(`/item/recommend/product?productName=${encodeURIComponent(productName)}&minConfidence=${minConfidence}&maxRecommendations=${maxRecommendations}&timeWindow=${timeWindow}`);
+                const data = await response.json();
+
+                hideLoading();
+                displayRecommendations(data, `"${productName}" 상품 기반 패턴`, analyticsData);
+            } catch (error) {
+                hideLoading();
+                console.error('패턴 요청 실패:', error);
+                alert('패턴 요청 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 자동 패턴 분석 (Redis 데이터 기반)
+        async function getAutoRecommendations() {
+            showLoading();
+
+            try {
+                const timeWindow = document.getElementById('timeWindow').value;
+                const minSupport = document.getElementById('minSupport').value;
+                const minConfidence = document.getElementById('minConfidence').value;
+                const maxRecommendations = document.getElementById('maxRecommendations').value;
+                
+                // 먼저 인기 상품 분석을 가져옴
+                const analyticsResponse = await fetch('/item/analytics');
+                const analyticsData = await analyticsResponse.json();
+                
+                if (analyticsData.error || !analyticsData.top_products || analyticsData.top_products.length === 0) {
+                    hideLoading();
+                    displayRecommendations({
+                        error: "패턴 분석할 데이터가 없습니다. 먼저 상품을 클릭해주세요."
+                    }, '자동 패턴', null);
+                    return;
+                }
+                
+                // 가장 인기 있는 상품을 기준으로 패턴 분석
+                const topProduct = analyticsData.top_products[0];
+                const productName = topProduct.product_name;
+                
+                const response = await fetch(`/item/recommend/product?productName=${encodeURIComponent(productName)}&minConfidence=${minConfidence}&maxRecommendations=${maxRecommendations}&timeWindow=${timeWindow}`);
+                const data = await response.json();
+
+                hideLoading();
+                displayRecommendations(data, `인기 상품 "${productName}" 기반 패턴 (${timeWindow}초 간격)`, analyticsData);
+            } catch (error) {
+                hideLoading();
+                console.error('자동 패턴 요청 실패:', error);
+                alert('자동 패턴 요청 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 패턴 결과 표시
+        function displayRecommendations(data, title, analyticsData = null) {
+            console.log('displayRecommendations 호출됨:', {data, title, analyticsData});
+            
+            const resultsDiv = document.getElementById('recommendationResults');
+            const cardsDiv = document.getElementById('recommendationCards');
+            const basisDiv = document.getElementById('recommendationBasis');
+            const basisContentDiv = document.getElementById('basisContent');
+            
+            console.log('DOM 요소들:', {resultsDiv, cardsDiv, basisDiv, basisContentDiv});
+            
+            if (!resultsDiv || !cardsDiv) {
+                console.error('필수 DOM 요소를 찾을 수 없습니다');
+                return;
+            }
+            
+            if (data.error) {
+                cardsDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> ${data.error}
+                    </div>
+                `;
+                if (basisDiv) {
+                    basisDiv.style.display = 'none';
+                }
+            } else if (data.recommendations && data.recommendations.length > 0) {
+                // 패턴 근거 정보 표시
+                if (analyticsData && basisDiv && basisContentDiv) {
+                    // 선택된 상품 정보 찾기 (상품 선택 모드인 경우)
+                    let selectedProduct = null;
+                    const productName = data.product_name;
+                    
+                    if (productName && analyticsData.top_products) {
+                        selectedProduct = analyticsData.top_products.find(p => p.product_name === productName);
+                    }
+                    
+                    // 선택된 상품이 없으면 첫 번째 인기 상품 사용 (자동 추천 모드)
+                    if (!selectedProduct && analyticsData.top_products && analyticsData.top_products.length > 0) {
+                        selectedProduct = analyticsData.top_products[0];
+                    }
+                    
+                    let learningGroupsHtml = '';
+                    
+                    // 학습 그룹 정보 추가
+                    if (data.learning_groups && Object.keys(data.learning_groups).length > 0) {
+                        learningGroupsHtml = `
+                            <div class="mt-3">
+                                <h6><i class="fas fa-layer-group"></i> 학습에 사용된 그룹 정보</h6>
+                                <div class="row">
+                        `;
+                        
+                        Object.entries(data.learning_groups).forEach(([groupId, groupInfo]) => {
+                            const products = groupInfo.products || [];
+                            const productNames = products.map(p => p.product_name).join(', ');
+                            
+                            learningGroupsHtml += `
+                                <div class="col-md-6 mb-2">
+                                    <div class="card bg-light">
+                                        <div class="card-body py-2">
+                                            <small><strong>${groupId}:</strong> ${productNames}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        learningGroupsHtml += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // 선택된 상품 정보가 있는 경우에만 근거 정보 표시
+                    if (selectedProduct) {
+                        basisContentDiv.innerHTML = `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>기준 상품:</strong> ${selectedProduct.product_name}<br>
+                                    <strong>클릭 수:</strong> ${selectedProduct.clicks}회<br>
+                                    <strong>카테고리:</strong> ${selectedProduct.categories.join(', ')}<br>
+                                    <strong>평균 가격:</strong> ₩${selectedProduct.average_price.toLocaleString()}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>전체 데이터:</strong><br>
+                                    • 총 상품 수: ${analyticsData.total_products}개<br>
+                                    • 총 클릭 수: ${analyticsData.total_clicks}회<br>
+                                    • 카테고리 분포: ${Object.keys(analyticsData.category_distribution).length}개<br>
+                                    • 분석 방법: 연관규칙 분석 (Apriori 알고리즘)<br>
+                                    • 그룹화 방식: 시간 기반 그룹화
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-lightbulb"></i> 
+                                    <strong>패턴 원리:</strong> "${selectedProduct.product_name}" 상품을 많이 클릭한 사용자들이 함께 클릭한 다른 상품들을 분석하여 패턴을 도출합니다.
+                                </small>
+                            </div>
+                            ${learningGroupsHtml}
+                        `;
+                        basisDiv.style.display = 'block';
+                    } else {
+                        basisDiv.style.display = 'none';
+                    }
+                } else if (basisDiv) {
+                    basisDiv.style.display = 'none';
+                }
+                
+                let html = `<h4>${title}</h4>`;
+                
+                html += '<div class="row">';
+                
+                data.recommendations.forEach((rec, index) => {
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card recommendation-card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">${rec.product}</h6>
+                                    <div class="mb-2">
+                                        <span class="confidence-badge me-1">신뢰도: ${rec.confidence}</span>
+                                        <span class="lift-badge me-1">향상도: ${rec.lift}</span>
+                                        <span class="support-badge">지지도: ${rec.support}</span>
+                                    </div>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <strong>연관규칙:</strong> ${rec.rule}<br>
+                                            <strong>패턴 근거:</strong> 기준 상품과 함께 구매될 확률이 ${(rec.confidence * 100).toFixed(1)}%입니다.
+                                        </small>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                cardsDiv.innerHTML = html;
+                console.log('패턴 카드 HTML 생성 완료');
+            } else {
+                cardsDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 패턴 분석할 상품이 없습니다. 다른 조건으로 시도해보세요.
+                    </div>
+                `;
+                if (basisDiv) {
+                    basisDiv.style.display = 'none';
+                }
+            }
+            
+            resultsDiv.style.display = 'block';
+            console.log('패턴 결과 표시 완료');
+        }
+
+        // 그룹 정보 로드
+        async function loadGroupsInfo() {
+            try {
+                const response = await fetch('/item/groups/info');
+                const data = await response.json();
+                
+                const contentDiv = document.getElementById('groupsContent');
+                const groupsDiv = document.getElementById('groupsInfo');
+                
+                if (data.error) {
+                    contentDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> ${data.error}
+                        </div>
+                    `;
+                } else if (data.groups && data.groups.length > 0) {
+                    let html = `
+                        <div class="mb-3">
+                            <h6>그룹 요약</h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <small class="text-muted">총 그룹: ${data.total_groups}개</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">세션 그룹: ${data.group_types.session_groups}개</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">시간 그룹: ${data.group_types.time_groups}개</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">총 거래: ${data.summary.total_transactions}개</small>
+                                </div>
+                            </div>
+                        </div>
+                        <h6>그룹 목록</h6>
+                    `;
+                    
+                    data.groups.forEach((group, index) => {
+                        const groupTypeBadge = group.group_type === 'time' ? 
+                            '<span class="badge bg-warning">시간 그룹</span>' : 
+                            '<span class="badge bg-primary">세션 그룹</span>';
+                        
+                        html += `
+                            <div class="card mb-2">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong>${group.group_id}</strong> ${groupTypeBadge}
+                                            <br>
+                                            <small class="text-muted">
+                                                상품 수: ${group.product_count}개 | 
+                                                카테고리: ${group.categories.join(', ') || '없음'}
+                                            </small>
+                                        </div>
+                                        <div class="text-end">
+                                            <small class="text-muted">상품 목록:</small><br>
+                                            <small>${group.products.join(', ')}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    contentDiv.innerHTML = html;
+                } else {
+                    contentDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 그룹 정보가 없습니다.
+                        </div>
+                    `;
+                }
+                
+                groupsDiv.style.display = 'block';
+            } catch (error) {
+                console.error('그룹 정보 로드 실패:', error);
+                document.getElementById('groupsContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> 그룹 정보 로드 중 오류가 발생했습니다.
+                    </div>
+                `;
+            }
+        }
+
+        // 상품 목록 로드
+        async function loadProductList() {
+            try {
+                const response = await fetch('/item/analytics');
+                const data = await response.json();
+                
+                const productSelect = document.getElementById('productSelect');
+                
+                if (data.top_products && data.top_products.length > 0) {
+                    // 기존 옵션 제거 (첫 번째 옵션 제외)
+                    productSelect.innerHTML = '<option value="">상품을 선택하세요</option>';
+                    
+                    // 상품 목록 추가
+                    data.top_products.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product.product_name;
+                        option.textContent = `${product.product_name} (클릭: ${product.clicks}회)`;
+                        productSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('상품 목록 로드 실패:', error);
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('페이지 로드 완료 - 초기화 시작');
+            loadProductList();
+            getAutoRecommendations();
+        });
+    </script>
+</body>
+</html>
